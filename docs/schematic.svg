@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="600" viewBox="0 0 1060 600" font-family="monospace" font-size="13">
+  <rect width="1060" height="600" fill="#ffffff"/>
+  <text x="530" y="24" text-anchor="middle" font-size="18" font-weight="bold" fill="#111">Standing desk controller — wiring</text>
+
+  <!-- power rails -->
+  <line x1="30" y1="50" x2="760" y2="50" stroke="#c0392b" stroke-width="2"/>
+  <text x="770" y="54" fill="#c0392b" font-weight="bold">+5V</text>
+  <line x1="30" y1="520" x2="870" y2="520" stroke="#111" stroke-width="2"/>
+  <text x="880" y="524" fill="#111" font-weight="bold">GND</text>
+
+  <!-- capacitor -->
+  <line x1="30" y1="50" x2="30" y2="272" stroke="#111" stroke-width="2"/>
+  <line x1="18" y1="272" x2="42" y2="272" stroke="#111" stroke-width="3"/>
+  <path d="M18,286 Q30,278 42,286" stroke="#111" stroke-width="3" fill="none"/>
+  <line x1="30" y1="286" x2="30" y2="520" stroke="#111" stroke-width="2"/>
+  <text x="48" y="268" fill="#111">+</text>
+  <text x="48" y="292" fill="#111">C1 electrolytic</text>
+  <text x="48" y="306" fill="#555" font-size="11">(decoupling, + to 5V)</text>
+
+  <!-- HC-SR04 -->
+  <rect x="60" y="130" width="180" height="120" fill="#eef5ff" stroke="#2c5aa0" stroke-width="2"/>
+  <text x="150" y="160" text-anchor="middle" font-weight="bold" fill="#111">HC-SR04</text>
+  <text x="150" y="178" text-anchor="middle" fill="#555" font-size="11">ultrasonic sensor</text>
+  <text x="150" y="194" text-anchor="middle" fill="#555" font-size="11">on the crossbar,</text>
+  <text x="150" y="208" text-anchor="middle" fill="#555" font-size="11">facing the floor</text>
+  <text x="156" y="145" fill="#111" font-size="11">VCC</text>
+  <text x="68" y="245" fill="#111" font-size="11">GND</text>
+  <text x="150" y="245" fill="#111" font-size="11">ECHO</text>
+  <text x="196" y="245" fill="#111" font-size="11">TRIG</text>
+  <line x1="150" y1="130" x2="150" y2="50" stroke="#c0392b" stroke-width="2"/>
+  <line x1="100" y1="250" x2="100" y2="520" stroke="#111" stroke-width="2"/>
+  <polyline points="170,250 170,330 340,330" fill="none" stroke="#2c5aa0" stroke-width="2"/>
+  <polyline points="210,250 210,300 340,300" fill="none" stroke="#2c5aa0" stroke-width="2"/>
+
+  <!-- Arduino Nano -->
+  <rect x="340" y="120" width="220" height="310" fill="#eefbf0" stroke="#1e8449" stroke-width="2"/>
+  <text x="450" y="150" text-anchor="middle" font-weight="bold" fill="#111">Arduino Nano</text>
+  <text x="450" y="168" text-anchor="middle" fill="#555" font-size="11">ATmega328P · CH340 USB</text>
+  <text x="348" y="296" fill="#111" font-size="11">D3</text>
+  <text x="348" y="326" fill="#111" font-size="11">D2</text>
+  <text x="536" y="161" fill="#111" font-size="11" text-anchor="end">D4</text>
+  <text x="536" y="321" fill="#111" font-size="11" text-anchor="end">D5</text>
+  <text x="450" y="138" fill="#111" font-size="11" text-anchor="middle">5V</text>
+  <text x="480" y="424" fill="#111" font-size="11" text-anchor="middle">GND</text>
+  <line x1="450" y1="120" x2="450" y2="50" stroke="#c0392b" stroke-width="2"/>
+  <line x1="480" y1="430" x2="480" y2="520" stroke="#111" stroke-width="2"/>
+  <line x1="560" y1="165" x2="640" y2="165" stroke="#7d3c98" stroke-width="2"/>
+  <line x1="560" y1="325" x2="640" y2="325" stroke="#7d3c98" stroke-width="2"/>
+  <!-- USB -->
+  <line x1="400" y1="430" x2="400" y2="470" stroke="#555" stroke-width="2" stroke-dasharray="4 3"/>
+  <polygon points="394,470 406,470 400,480" fill="#555"/>
+  <text x="390" y="494" fill="#555" font-size="11" text-anchor="end">USB to PC (power + 115200 serial)</text>
+  <text x="450" y="236" text-anchor="middle" fill="#555" font-size="11">D3 → TRIG</text>
+  <text x="450" y="252" text-anchor="middle" fill="#555" font-size="11">D2 ← ECHO</text>
+  <text x="450" y="268" text-anchor="middle" fill="#555" font-size="11">D4 → UP relay</text>
+  <text x="450" y="284" text-anchor="middle" fill="#555" font-size="11">D5 → DOWN relay</text>
+
+  <!-- UP relay -->
+  <rect x="640" y="120" width="160" height="110" fill="#fff6e5" stroke="#b9770e" stroke-width="2"/>
+  <text x="720" y="145" text-anchor="middle" font-weight="bold" fill="#111">Relay 1 · UP</text>
+  <text x="720" y="162" text-anchor="middle" fill="#555" font-size="11">5V Songle module</text>
+  <text x="720" y="176" text-anchor="middle" fill="#555" font-size="11">high-level trigger</text>
+  <text x="646" y="169" fill="#111" font-size="11">IN</text>
+  <text x="720" y="135" fill="#111" font-size="11" text-anchor="middle">VCC</text>
+  <text x="720" y="224" fill="#111" font-size="11" text-anchor="middle">GND</text>
+  <text x="794" y="154" fill="#111" font-size="11" text-anchor="end">COM</text>
+  <text x="794" y="194" fill="#111" font-size="11" text-anchor="end">NO</text>
+  <line x1="720" y1="120" x2="720" y2="50" stroke="#c0392b" stroke-width="2"/>
+  <path d="M720,230 V250 H830 V304 A6,6 0 0 1 830,316 V344 A6,6 0 0 1 830,356 V520" fill="none" stroke="#111" stroke-width="2"/>
+  <line x1="800" y1="150" x2="900" y2="150" stroke="#111" stroke-width="2"/>
+  <line x1="800" y1="190" x2="900" y2="190" stroke="#111" stroke-width="2"/>
+
+  <!-- DOWN relay -->
+  <rect x="640" y="280" width="160" height="110" fill="#fff6e5" stroke="#b9770e" stroke-width="2"/>
+  <text x="720" y="305" text-anchor="middle" font-weight="bold" fill="#111">Relay 2 · DOWN</text>
+  <text x="720" y="322" text-anchor="middle" fill="#555" font-size="11">5V Songle module</text>
+  <text x="720" y="336" text-anchor="middle" fill="#555" font-size="11">high-level trigger</text>
+  <text x="646" y="329" fill="#111" font-size="11">IN</text>
+  <text x="646" y="296" fill="#111" font-size="11">VCC</text>
+  <text x="720" y="384" fill="#111" font-size="11" text-anchor="middle">GND</text>
+  <text x="794" y="314" fill="#111" font-size="11" text-anchor="end">COM</text>
+  <text x="794" y="354" fill="#111" font-size="11" text-anchor="end">NO</text>
+  <path d="M640,300 H600 V171 A6,6 0 0 1 600,159 V50" fill="none" stroke="#c0392b" stroke-width="2"/>
+  <line x1="720" y1="390" x2="720" y2="520" stroke="#111" stroke-width="2"/>
+  <line x1="800" y1="310" x2="900" y2="310" stroke="#111" stroke-width="2"/>
+  <line x1="800" y1="350" x2="900" y2="350" stroke="#111" stroke-width="2"/>
+
+  <!-- JST to hand controller -->
+  <rect x="900" y="130" width="130" height="240" fill="#f4f4f4" stroke="#555" stroke-width="2"/>
+  <text x="965" y="230" text-anchor="middle" font-weight="bold" fill="#111">JST 4-pin</text>
+  <text x="965" y="248" text-anchor="middle" fill="#555" font-size="11">to desk hand</text>
+  <text x="965" y="262" text-anchor="middle" fill="#555" font-size="11">controller</text>
+  <text x="906" y="146" fill="#111" font-size="11">UP button</text>
+  <text x="906" y="194" fill="#111" font-size="11">UP button</text>
+  <text x="906" y="306" fill="#111" font-size="11">DOWN button</text>
+  <text x="906" y="354" fill="#111" font-size="11">DOWN button</text>
+  <text x="965" y="280" text-anchor="middle" fill="#555" font-size="10">relay contacts sit</text>
+  <text x="965" y="292" text-anchor="middle" fill="#555" font-size="10">across each button</text>
+
+  <!-- junctions -->
+  <g fill="#c0392b">
+    <circle cx="150" cy="50" r="4"/><circle cx="450" cy="50" r="4"/><circle cx="600" cy="50" r="4"/><circle cx="720" cy="50" r="4"/>
+  </g>
+  <g fill="#111">
+    <circle cx="100" cy="520" r="4"/><circle cx="480" cy="520" r="4"/><circle cx="720" cy="520" r="4"/><circle cx="830" cy="520" r="4"/>
+  </g>
+
+  <!-- legend -->
+  <text x="30" y="556" fill="#555" font-size="11">● junction · a hop (small arc) means the wires cross without connecting · the Nano's 5V pin, fed from USB, powers the sensor and relays.</text>
+  <text x="30" y="572" fill="#555" font-size="11">Pin numbers are the firmware defaults; change them over serial (set trig/echo/up/down) if your wiring differs.</text>
+  <text x="30" y="588" fill="#555" font-size="11">Check your hand controller's JST pinout before wiring the relay contacts across the UP and DOWN buttons.</text>
+</svg>

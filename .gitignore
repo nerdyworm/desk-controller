@@ -1,0 +1,6 @@
+# compiled artifacts (the flashed .hex is kept for convenience)
+build/*
+!build/desk_controller.ino.hex
+# flash readbacks from prog.py
+backup/
+__pycache__/

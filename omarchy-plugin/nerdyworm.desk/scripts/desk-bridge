@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Bridge between the Omarchy bar widget and the desk controller's serial port.
+# Override DESK_CLI if desk.py lives somewhere else.
+exec python3 "${DESK_CLI:-$HOME/code/computer/desk/desk.py}" pipe
