@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""Print whether the user can be at the desk, as one JSON line.
+
+  {"screen": "on"|"off"|"none", "locked": true|false, "present": true|false}
+
+screen is "off" when every Hyprland monitor reports DPMS off, "none" when
+Hyprland lists no monitor (a DisplayPort monitor that is powered off often
+disconnects), and "on" otherwise. present is false when the screen is not
+on or the session is locked.
+"""
+
+import json
+import subprocess
+import sys
+
+
+def run(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=5).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def main():
+    screen = "on"
+    try:
+        monitors = json.loads(run(["hyprctl", "monitors", "-j"]) or "[]")
+    except ValueError:
+        monitors = []
+    if not monitors:
+        screen = "none"
+    elif all(m.get("dpmsStatus") is False for m in monitors):
+        screen = "off"
+    locked = run(["omarchy-shell", "lock", "isLocked"]).lower() == "true"
+    present = screen == "on" and not locked
+    print(json.dumps({"screen": screen, "locked": locked, "present": present}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

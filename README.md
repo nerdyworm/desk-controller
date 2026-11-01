@@ -114,14 +114,20 @@ If the desk stops short of the target or goes past it, adjust `earlyup` and `ear
 3. Run `omarchy-shell shell rescanPlugins`.
 4. Run `omarchy plugin enable nerdyworm.desk`.
 
-The bar label shows the current height. A left click opens a panel. The panel has sit and stand presets, up and down nudges, stop, and go-to-height. It also has buttons that save the current height as a preset. A right click moves to the other preset. A middle click stops the desk.
+The bar label shows the height and the standing time for today, for example `⇅ 74 · 1h20/2h`. A left click opens the panel. A right click moves to the other preset. A middle click stops the desk.
+
+The panel has two tabs. The Desk tab has the Sit and Stand buttons and the standing time for today with a goal bar. The Settings tab has the up and down nudges, go-to-height, the preset save buttons, and the tracking and reminder settings.
+
+The widget infers the posture from the height. A height above the midpoint of the two presets counts as standing. Time with no input, with the screen off, or with the session locked counts as away. The posture log is in `~/.local/share/desk-controller/posture.jsonl`.
+
+While you sit for longer than the reminder time inside the work hours, the widget sends a desktop notification. Click the notification to stand. See `omarchy-plugin/nerdyworm.desk/README.md` for the settings keys.
 
 The widget keeps the serial port open through `desk.py pipe`. Before you use `desk.py` or `prog.py` directly, run `omarchy plugin disable nerdyworm.desk` to release the port.
 
 The widget has an IPC interface for keybinds:
 
 ```
-omarchy-shell nerdyworm.desk sit|stand|togglePreset|go <cm>|stop|status
+omarchy-shell nerdyworm.desk sit|stand|togglePreset|go <cm>|stop|status|today|snooze <min>
 ```
 
 ## Safety in the firmware

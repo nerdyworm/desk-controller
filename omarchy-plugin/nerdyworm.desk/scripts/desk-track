@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""Posture log for the standing desk widget.
+
+Usage:
+  desk-track record <sit|stand|away|unknown> [height_cm]
+  desk-track summary
+  desk-track path
+
+The widget calls `record` when the posture changes and `summary` once a
+minute. Both print the same JSON summary. Records go to a JSONL file, one
+object per line: {"t": <unix seconds>, "state": "...", "h": <cm>}.
+
+Every call also touches a heartbeat file. If the gap since the last
+heartbeat is longer than GAP_SECONDS (the shell was down, the machine
+slept), an "away" record is inserted at the heartbeat time so the old
+posture does not run on through the gap.
+"""
+
+import json
+import os
+import sys
+import time
+from datetime import datetime, timedelta
+
+GAP_SECONDS = 10 * 60
+COUNTED = ("sit", "stand")
+DAYS_BACK = 7
+
+
+def data_dir():
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    d = os.path.join(base, "desk-controller")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def log_path():
+    return os.path.join(data_dir(), "posture.jsonl")
+
+
+def heartbeat_path():
+    return os.path.join(data_dir(), "heartbeat")
+
+
+def read_records():
+    out = []
+    try:
+        with open(log_path()) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(r, dict) and "t" in r and "state" in r:
+                    out.append(r)
+    except FileNotFoundError:
+        pass
+    out.sort(key=lambda r: r["t"])
+    return out
+
+
+def append(rec):
+    with open(log_path(), "a") as f:
+        f.write(json.dumps(rec, separators=(",", ":")) + "\n")
+
+
+def read_heartbeat():
+    try:
+        with open(heartbeat_path()) as f:
+            return float(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def write_heartbeat(now):
+    tmp = heartbeat_path() + ".tmp"
+    with open(tmp, "w") as f:
+        f.write("%d\n" % int(now))
+    os.replace(tmp, heartbeat_path())
+
+
+def close_gap(records, now):
+    """Insert an away record if the widget was silent for too long."""
+    hb = read_heartbeat()
+    if hb is None or not records:
+        return records
+    last = records[-1]
+    if now - hb > GAP_SECONDS and last["state"] != "away" and hb > last["t"]:
+        rec = {"t": int(hb), "state": "away"}
+        append(rec)
+        records.append(rec)
+    return records
+
+
+def day_start(ts):
+    d = datetime.fromtimestamp(ts)
+    return datetime(d.year, d.month, d.day).timestamp()
+
+
+def totals_by_day(records, now):
+    """Return {date_str: {"sit": s, "stand": s}} for the counted states."""
+    days = {}
+    for i, r in enumerate(records):
+        state = r["state"]
+        if state not in COUNTED:
+            continue
+        start = r["t"]
+        end = records[i + 1]["t"] if i + 1 < len(records) else now
+        if end <= start:
+            continue
+        # Split the interval at local midnights.
+        cur = start
+        while cur < end:
+            ds = day_start(cur)
+            next_day = (datetime.fromtimestamp(ds) + timedelta(days=1)).timestamp()
+            seg_end = min(end, next_day)
+            key = datetime.fromtimestamp(ds).strftime("%Y-%m-%d")
+            bucket = days.setdefault(key, {"sit": 0, "stand": 0})
+            bucket[state] += int(seg_end - cur)
+            cur = seg_end
+    return days
+
+
+def summary(records, now):
+    days = totals_by_day(records, now)
+    today_key = datetime.fromtimestamp(now).strftime("%Y-%m-%d")
+    today = days.get(today_key, {"sit": 0, "stand": 0})
+    current = {"state": "unknown", "since": None, "seconds": 0}
+    if records:
+        last = records[-1]
+        current = {"state": last["state"], "since": int(last["t"]), "seconds": int(now - last["t"])}
+        if "h" in last:
+            current["height"] = last["h"]
+    history = []
+    for n in range(DAYS_BACK - 1, -1, -1):
+        d = datetime.fromtimestamp(now) - timedelta(days=n)
+        key = d.strftime("%Y-%m-%d")
+        b = days.get(key, {"sit": 0, "stand": 0})
+        history.append({"date": key, "sit": b["sit"], "stand": b["stand"]})
+    return {
+        "now": int(now),
+        "today": {"sit": today["sit"], "stand": today["stand"]},
+        "current": current,
+        "days": history,
+        "file": log_path(),
+    }
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    cmd = argv[0]
+    now = time.time()
+    if cmd == "path":
+        print(log_path())
+        return 0
+    records = read_records()
+    records = close_gap(records, now)
+    if cmd == "record":
+        if len(argv) < 2 or argv[1] not in ("sit", "stand", "away", "unknown"):
+            print("usage: desk-track record <sit|stand|away|unknown> [height_cm]", file=sys.stderr)
+            return 2
+        state = argv[1]
+        rec = {"t": int(now), "state": state}
+        if len(argv) > 2:
+            try:
+                rec["h"] = round(float(argv[2]), 1)
+            except ValueError:
+                pass
+        if not records or records[-1]["state"] != state:
+            append(rec)
+            records.append(rec)
+    elif cmd != "summary":
+        print("unknown command: %s" % cmd, file=sys.stderr)
+        return 2
+    write_heartbeat(now)
+    print(json.dumps(summary(records, now), separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
