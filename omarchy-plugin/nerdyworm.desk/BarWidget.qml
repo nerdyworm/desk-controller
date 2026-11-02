@@ -17,6 +17,7 @@ import qs.Ui
 // which also computes today's totals. The posture is "away", and nothing is
 // counted, while there has been no input for awayAfterMinutes, while the
 // screen is off, or while the session is locked (scripts/desk-presence).
+// Every state except away counts as time at the computer.
 //
 // Settings (optional keys on this widget's entry in shell.json):
 //   goalMinutes          daily standing goal              (default 120)
@@ -60,6 +61,9 @@ BarWidget {
     property string posture: "unknown"   // sit | stand | away | unknown
     property int standTodaySec: 0
     property int sitTodaySec: 0
+    property int activeTodaySec: 0       // at the computer: anything but away
+    property real activeFirst: 0         // unix seconds of first activity today
+    property int activeWeekSec: 0        // last 7 days, today included
     property int postureSinceSec: 0      // time in the current posture
     property bool screenOff: false       // every monitor is DPMS off or gone
     property bool locked: false          // session lock is up
@@ -74,6 +78,9 @@ BarWidget {
     readonly property var workDays: setting("workDays", [1, 2, 3, 4, 5])
     readonly property bool remindersEnabled: setting("reminders", true)
     readonly property bool goalMet: standTodaySec >= goalMinutes * 60
+    readonly property int historyMaxSec: historyDays.reduce(function(m, d) {
+        return Math.max(m, d.active || 0);
+    }, 0)
     readonly property real goalFraction: goalMinutes > 0 ? Math.min(1, standTodaySec / (goalMinutes * 60)) : 0
 
     function fmt(v) {
@@ -145,6 +152,26 @@ BarWidget {
             return "Set both presets to track posture";
 
         return "Posture unknown";
+    }
+
+    function fmtClock(ts) {
+        if (!ts)
+            return "--:--";
+
+        var d = new Date(ts * 1000);
+        var m = d.getMinutes();
+        return d.getHours() + ":" + (m < 10 ? "0" + m : m);
+    }
+
+    function activeLine() {
+        if (activeTodaySec <= 0)
+            return "Nothing yet today";
+
+        var worked = historyDays.filter(function(d) {
+            return (d.active || 0) > 0;
+        }).length;
+        var avg = worked > 0 ? activeWeekSec / worked : 0;
+        return "Since " + fmtClock(activeFirst) + " · 7 days " + fmtDur(activeWeekSec) + " · avg " + fmtDur(avg) + "/day";
     }
 
     function workWindowLabel() {
@@ -399,7 +426,12 @@ BarWidget {
         if (data.today) {
             standTodaySec = data.today.stand || 0;
             sitTodaySec = data.today.sit || 0;
+            activeTodaySec = data.today.active || 0;
+            activeFirst = data.today.first || 0;
         }
+        if (data.week !== undefined)
+            activeWeekSec = data.week || 0;
+
         if (data.current)
             postureSinceSec = data.current.seconds || 0;
 
@@ -492,6 +524,9 @@ BarWidget {
             "postureSeconds": postureSinceSec,
             "standToday": standTodaySec,
             "sitToday": sitTodaySec,
+            "activeToday": activeTodaySec,
+            "activeSince": activeFirst,
+            "activeWeek": activeWeekSec,
             "goalMinutes": goalMinutes,
             "goalMet": goalMet,
             "days": historyDays
@@ -764,7 +799,7 @@ BarWidget {
         anchors.fill: parent
         bar: root.bar
         text: root.barLabel()
-        tooltipText: root.connected ? "Desk " + root.fmt(root.height_cm) + " cm · " + root.stateLabel() + "\nStanding today " + root.fmtDur(root.standTodaySec) + " of " + root.fmtGoal() + "\nLeft: panel · Right: sit/stand · Middle: stop" : "Desk offline — " + (root.errorMessage || "no controller found")
+        tooltipText: root.connected ? "Desk " + root.fmt(root.height_cm) + " cm · " + root.stateLabel() + "\nStanding today " + root.fmtDur(root.standTodaySec) + " of " + root.fmtGoal() + "\nAt the computer " + root.fmtDur(root.activeTodaySec) + "\nLeft: panel · Right: sit/stand · Middle: stop" : "Desk offline — " + (root.errorMessage || "no controller found")
         active: root.targeting
         dimmed: !root.connected
         onPressed: function(mouseButton) {
@@ -995,6 +1030,74 @@ BarWidget {
                         visible: root.tab === "desk"
                         width: parent.width
                         text: root.postureLine() + " · sat " + root.fmtDur(root.sitTodaySec) + " today"
+                        color: Qt.darker(root.foreground, 1.3)
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.bodySmall
+                        wrapMode: Text.WordWrap
+                    }
+
+                    PanelSectionHeader {
+                        visible: root.tab === "desk"
+                        text: "AT THE COMPUTER TODAY"
+                        foreground: root.foreground
+                        fontFamily: root.fontFamily
+                    }
+
+                    Row {
+                        visible: root.tab === "desk"
+                        width: panelColumn.width
+                        spacing: Style.space(8)
+
+                        Text {
+                            text: root.fmtDur(root.activeTodaySec)
+                            color: root.foreground
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.title
+                            font.bold: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        // Last 7 days, oldest first; today is the full-strength bar.
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: Style.space(3)
+
+                            Repeater {
+                                model: root.historyDays
+
+                                Item {
+                                    required property var modelData
+                                    required property int index
+
+                                    width: Style.space(8)
+                                    height: Style.space(22)
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: Style.space(2)
+                                        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
+                                    }
+
+                                    Rectangle {
+                                        anchors.bottom: parent.bottom
+                                        width: parent.width
+                                        height: root.historyMaxSec > 0 ? parent.height * (modelData.active || 0) / root.historyMaxSec : 0
+                                        radius: Style.space(2)
+                                        color: index === root.historyDays.length - 1 ? root.foreground : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.45)
+                                    }
+
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                    Text {
+                        visible: root.tab === "desk"
+                        width: parent.width
+                        text: root.activeLine()
                         color: Qt.darker(root.foreground, 1.3)
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.bodySmall

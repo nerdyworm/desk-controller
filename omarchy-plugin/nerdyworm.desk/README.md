@@ -4,7 +4,7 @@ Omarchy bar widget for the Arduino desk controller in `~/code/computer/desk`.
 
 The bar label shows the height and the standing time for today, for example `⇅ 74 · 1h20/2h`. A left click opens the panel. A right click moves to the other preset. A middle click stops the desk.
 
-The panel has two tabs. The Desk tab has the Sit and Stand buttons and the standing time for today with a goal bar. The Settings tab has the up and down nudges, go-to-height, and the preset save buttons. It also has the tracking and reminder settings.
+The panel has two tabs. The Desk tab has the Sit and Stand buttons, the standing time for today with a goal bar, and the time at the computer. The Settings tab has the up and down nudges, go-to-height, and the preset save buttons. It also has the tracking and reminder settings.
 
 Keys while the panel is open: S sit, T stand, X stop, Z snooze, arrows change the go-to value, Enter goes.
 
@@ -15,6 +15,10 @@ The widget infers the posture from the height. A height above the midpoint of th
 The posture is "away" when you are not at the desk, and away time is not counted. Three signals set away: no keyboard or mouse input for `awayAfterMinutes`, every monitor off or disconnected, or a locked session. The script `scripts/desk-presence` reads the screen and lock state once a minute. Sleep is not a signal. The machine can stay awake all night and the log stays correct.
 
 `scripts/desk-track` writes each posture change to `~/.local/share/desk-controller/posture.jsonl` and computes the totals. Run `scripts/desk-track summary` to see the totals as JSON. The file is plain text, one record per line.
+
+## Time at the computer
+
+Every state except away counts as time at the computer: sit, stand, and unknown (the desk is offline but you are there). The Desk tab shows the total for today, the time of the first activity, a bar for each of the last 7 days, and the 7-day total and average. Run `scripts/desk-track report` for a table of the last 7 days, or `scripts/desk-track report 30` for 30 days.
 
 ## Reminders
 

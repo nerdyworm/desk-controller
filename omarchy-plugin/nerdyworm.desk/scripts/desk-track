@@ -4,6 +4,7 @@
 Usage:
   desk-track record <sit|stand|away|unknown> [height_cm]
   desk-track summary
+  desk-track report [days]
   desk-track path
 
 The widget calls `record` when the posture changes and `summary` once a
@@ -14,6 +15,10 @@ Every call also touches a heartbeat file. If the gap since the last
 heartbeat is longer than GAP_SECONDS (the shell was down, the machine
 slept), an "away" record is inserted at the heartbeat time so the old
 posture does not run on through the gap.
+
+Time at the computer ("active") is every state except away: sit, stand,
+and unknown (desk offline or presets unset, but you are still there).
+`report` prints a table of active time, start and end per day.
 """
 
 import json
@@ -24,6 +29,7 @@ from datetime import datetime, timedelta
 
 GAP_SECONDS = 10 * 60
 COUNTED = ("sit", "stand")
+ACTIVE = ("sit", "stand", "unknown")
 DAYS_BACK = 7
 
 
@@ -100,12 +106,17 @@ def day_start(ts):
     return datetime(d.year, d.month, d.day).timestamp()
 
 
+def empty_day():
+    return {"sit": 0, "stand": 0, "active": 0, "first": None, "last": None}
+
+
 def totals_by_day(records, now):
-    """Return {date_str: {"sit": s, "stand": s}} for the counted states."""
+    """Return {date_str: day} with sit, stand and active seconds, and the
+    first and last active times of the day."""
     days = {}
     for i, r in enumerate(records):
         state = r["state"]
-        if state not in COUNTED:
+        if state not in ACTIVE:
             continue
         start = r["t"]
         end = records[i + 1]["t"] if i + 1 < len(records) else now
@@ -118,8 +129,13 @@ def totals_by_day(records, now):
             next_day = (datetime.fromtimestamp(ds) + timedelta(days=1)).timestamp()
             seg_end = min(end, next_day)
             key = datetime.fromtimestamp(ds).strftime("%Y-%m-%d")
-            bucket = days.setdefault(key, {"sit": 0, "stand": 0})
-            bucket[state] += int(seg_end - cur)
+            bucket = days.setdefault(key, empty_day())
+            if state in COUNTED:
+                bucket[state] += int(seg_end - cur)
+            bucket["active"] += int(seg_end - cur)
+            if bucket["first"] is None:
+                bucket["first"] = int(cur)
+            bucket["last"] = int(seg_end)
             cur = seg_end
     return days
 
@@ -127,7 +143,7 @@ def totals_by_day(records, now):
 def summary(records, now):
     days = totals_by_day(records, now)
     today_key = datetime.fromtimestamp(now).strftime("%Y-%m-%d")
-    today = days.get(today_key, {"sit": 0, "stand": 0})
+    today = days.get(today_key, empty_day())
     current = {"state": "unknown", "since": None, "seconds": 0}
     if records:
         last = records[-1]
@@ -138,15 +154,41 @@ def summary(records, now):
     for n in range(DAYS_BACK - 1, -1, -1):
         d = datetime.fromtimestamp(now) - timedelta(days=n)
         key = d.strftime("%Y-%m-%d")
-        b = days.get(key, {"sit": 0, "stand": 0})
-        history.append({"date": key, "sit": b["sit"], "stand": b["stand"]})
+        b = days.get(key, empty_day())
+        history.append({"date": key, "sit": b["sit"], "stand": b["stand"], "active": b["active"]})
     return {
         "now": int(now),
-        "today": {"sit": today["sit"], "stand": today["stand"]},
+        "today": {"sit": today["sit"], "stand": today["stand"], "active": today["active"],
+                  "first": today["first"], "last": today["last"]},
+        "week": sum(d["active"] for d in history),
         "current": current,
         "days": history,
         "file": log_path(),
     }
+
+
+def fmt_dur(sec):
+    m = int(sec) // 60
+    return "%dh%02d" % (m // 60, m % 60) if m >= 60 else "%dm" % m
+
+
+def fmt_clock(ts):
+    return datetime.fromtimestamp(ts).strftime("%H:%M") if ts else "--:--"
+
+
+def report(records, now, n_days):
+    days = totals_by_day(records, now)
+    print("%-10s %8s %8s %8s  %5s  %5s" % ("day", "active", "stand", "sit", "start", "end"))
+    total = worked = 0
+    for n in range(n_days - 1, -1, -1):
+        d = datetime.fromtimestamp(now) - timedelta(days=n)
+        b = days.get(d.strftime("%Y-%m-%d"), empty_day())
+        total += b["active"]
+        worked += 1 if b["active"] > 0 else 0
+        print("%-10s %8s %8s %8s  %5s  %5s" % (d.strftime("%a %m-%d"), fmt_dur(b["active"]),
+              fmt_dur(b["stand"]), fmt_dur(b["sit"]), fmt_clock(b["first"]), fmt_clock(b["last"])))
+    avg = total / worked if worked else 0
+    print("\ntotal %s over %d day(s), %s per day with any activity" % (fmt_dur(total), worked, fmt_dur(avg)))
 
 
 def main(argv):
@@ -159,6 +201,13 @@ def main(argv):
         print(log_path())
         return 0
     records = read_records()
+    if cmd == "report":
+        try:
+            n_days = int(argv[1]) if len(argv) > 1 else DAYS_BACK
+        except ValueError:
+            n_days = DAYS_BACK
+        report(records, now, max(1, n_days))
+        return 0
     records = close_gap(records, now)
     if cmd == "record":
         if len(argv) < 2 or argv[1] not in ("sit", "stand", "away", "unknown"):
